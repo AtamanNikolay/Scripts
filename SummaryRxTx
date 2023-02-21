@@ -1,0 +1,28 @@
+#save Rx,Tx to file and clear stat interface
+:local ifName "Giga";
+:local units {"B"=1;"KB"=1024;"MB"=1024*1024};
+:local unit "KB";
+#BEGIN File
+#Find file $ifName.txt and if not exists then create
+:local fStat [/file print as-value  where name~"$ifName"];
+:if ([:len $fStat] = 0) do={
+#file $ifName not exists - create file
+:set fStat "$ifName.txt";
+/file print file=$fStat;
+/ping 127.0.0.1 count=3;
+/file set $fStat contents="0,0";
+} else={
+:set $fStat ([pick $fStat 0]->"name");
+}
+#END File
+:local rxtx [:toarray [/file get $fStat contents ]];
+:local ifStat [:pick [/interface  print stats as-value where name~"$ifName"] 0];
+:local rx ([:pick $rxtx 0] + ($ifStat->"rx-byte" / $units->$unit));
+:local tx ([:pick $rxtx 1] + ($ifStat->"tx-byte" / $units->$unit));
+/interface reset-counters [find name~"$ifName"];
+/file set $fStat contents="$rx,$tx";
+#every day in 00:00 send stat to e-mail
+:if ([/system clock get time] < [:totime "00:05:00"]) do={
+ /tool e-mail send to=support@vkutkxp.com.ua subject="MikroTik::Traffic $ifName" body="Download=$rx $unit\tUpload=$tx $unit";
+/file set $fStat contents="0,0";
+}
