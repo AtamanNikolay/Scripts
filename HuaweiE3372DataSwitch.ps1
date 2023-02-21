@@ -34,6 +34,9 @@ if($args.Count -eq 0){
 ########################################################
 $ipModem = "192.168.8.1"
 $log = Log("Початок роботи скрипта: $([datetime]::Now.ToString('yyyy-MM-dd HH:mm:ss'))")
+$emlFrom = "e-mail from"
+$emlTo = "e-mail to"
+$emlPass = "password to smtp server"
 $exCode = 0
 ########################################################
 if ( -not ($args[0] -eq "0" -or $args[0] -eq "1")){
@@ -66,10 +69,10 @@ if ( -not ($args[0] -eq "0" -or $args[0] -eq "1")){
     }
 }
 #Send result to support@vkutkxp.com.ua
-$secpasswd = ConvertTo-SecureString "01000000d08c9ddf0115d1118c7a00c04fc297eb01000000e3514b6fab83944e9da418686734fb680000000002000000000010660000000100002000000020f2f5b976002626aa33d9f55b28570cdb7376e461e66176f627604146abe047000000000e8000000002000020000000cf58f8bb8612bae24b66ee6d10201e3ff4c9bcd56980b12f35983dc2e16d460020000000e2b1748d6f3b36e3ef46dcd73c5fe8f4c94252602d50d5152f6c89bd5ea447aa40000000c71e2d8d4d03d16b3e4c34da89793a4644c7ea26a4b3607563aeed92feaac39e5640f66b9fd5193e2d08b192b30673442307604131e3eeac24fd17717563a0b3"# -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential("support@vkutkxp.com.ua", $secpasswd)
+$secpasswd = ConvertTo-SecureString $emlPass -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential($emlFrom, $secpasswd)
 Write-Host "Send log to e-mail"
-Send-MailMessage -To "support@vkutkxp.com.ua" -From "support@vkutkxp.com.ua" -Subject "HuaweiE3372::Mobile dataswitch" -Body $log -SmtpServer "192.168.12.207" -Credential $cred -Encoding $([System.Text.UTF8Encoding]::UTF8)
+Send-MailMessage -To $emlTo -From $emlFrom -Subject "HuaweiE3372::Mobile dataswitch" -Body $log -SmtpServer "smtp-server" -Credential $cred -Encoding $([System.Text.UTF8Encoding]::UTF8)
 Start-Sleep -Seconds 3
 Exit $exCode
 #
