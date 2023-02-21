@@ -9,7 +9,7 @@
 #file $ifName not exists - create file
 :set fStat "$ifName.txt";
 /file print file=$fStat;
-/ping 127.0.0.1 count=3;
+:delay 3s;
 /file set $fStat contents="0,0,0,0";
 } else={
 :set $fStat ([pick $fStat 0]->"name");
