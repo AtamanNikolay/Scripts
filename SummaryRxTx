@@ -10,19 +10,23 @@
 :set fStat "$ifName.txt";
 /file print file=$fStat;
 /ping 127.0.0.1 count=3;
-/file set $fStat contents="0,0";
+/file set $fStat contents="0,0,0,0";
 } else={
 :set $fStat ([pick $fStat 0]->"name");
 }
 #END File
 :local rxtx [:toarray [/file get $fStat contents ]];
+:local Rx {"int"=[:pick $rxtx 0]; "dec"=[:pick $rxtx 1]};
+:local Tx {"int"=[:pick $rxtx 2]; "dec"=[:pick $rxtx 3]};
 :local ifStat [:pick [/interface  print stats as-value where name~"$ifName"] 0];
-:local rx ([:pick $rxtx 0] + ($ifStat->"rx-byte" / $units->$unit));
-:local tx ([:pick $rxtx 1] + ($ifStat->"tx-byte" / $units->$unit));
+:set ($Rx->"int") ($Rx->"int" + ($ifStat->"rx-byte" / $units->$unit));
+:set ($Rx->"dec") ($Rx->"dec" + ($ifStat->"rx-byte" % $units->$unit));
+:set ($Tx->"int") ($Tx->"int" + ($ifStat->"tx-byte" / $units->$unit));
+:set ($Tx->"dec") ($Tx->"dec" + ($ifStat->"tx-byte" % $units->$unit));
 /interface reset-counters [find name~"$ifName"];
-/file set $fStat contents="$rx,$tx";
+/file set $fStat contents="$($Rx->"int"),$($Rx->"dec"),$($Tx->"int"),$($Tx->"dec")";
 #every day in 00:00 send stat to e-mail
 :if ([/system clock get time] < [:totime "00:05:00"]) do={
- /tool e-mail send to=support@vkutkxp.com.ua subject="MikroTik::Traffic $ifName" body="Download=$rx $unit\tUpload=$tx $unit";
-/file set $fStat contents="0,0";
+ /tool e-mail send to=support@vkutkxp.com.ua subject="MikroTik::Traffic $ifName" body="Download=$($Rx->"int").$($Rx->"dec") $unit\tUpload=$($Tx->"int").$($Tx->"dec") $unit";
+/file set $fStat contents="0,0,0,0";
 }
