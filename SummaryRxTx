@@ -1,32 +1,39 @@
 #save Rx,Tx to file and clear stat interface
 :local ifName "Giga";
-:local units {"B"=1;"KB"=1024;"MB"=1024*1024};
-:local unit "KB";
 #BEGIN File
 #Find file $ifName.txt and if not exists then create
 :local fStat [/file print as-value  where name~"$ifName"];
 :if ([:len $fStat] = 0) do={
 #file $ifName not exists - create file
-:set fStat "$ifName.txt";
-/file print file=$fStat;
-:delay 3s;
-/file set $fStat contents="0,0,0,0";
+	:set fStat "$ifName.txt";
+	/file print file=$fStat;
+	:delay 3s;
+	/file set $fStat contents="0,0";
 } else={
-:set $fStat ([pick $fStat 0]->"name");
+	:set $fStat ([pick $fStat 0]->"name");
 }
 #END File
 :local rxtx [:toarray [/file get $fStat contents ]];
-:local Rx {"int"=[:pick $rxtx 0]; "dec"=[:pick $rxtx 1]};
-:local Tx {"int"=[:pick $rxtx 2]; "dec"=[:pick $rxtx 3]};
 :local ifStat [:pick [/interface  print stats as-value where name~"$ifName"] 0];
-:set ($Rx->"int") ($Rx->"int" + ($ifStat->"rx-byte" / $units->$unit));
-:set ($Rx->"dec") ($Rx->"dec" + ($ifStat->"rx-byte" % $units->$unit));
-:set ($Tx->"int") ($Tx->"int" + ($ifStat->"tx-byte" / $units->$unit));
-:set ($Tx->"dec") ($Tx->"dec" + ($ifStat->"tx-byte" % $units->$unit));
+:set ($rxtx->0) ($rxtx->0 + $ifStat->"rx-byte");
+:set ($rxtx->1) ($rxtx->1 + $ifStat->"tx-byte");
 /interface reset-counters [find name~"$ifName"];
-/file set $fStat contents="$($Rx->"int"),$($Rx->"dec"),$($Tx->"int"),$($Tx->"dec")";
+/file set $fStat contents="$($rxtx->0),$($rxtx->1)";
 #every day in 00:00 send stat to e-mail
 :if ([/system clock get time] < [:totime "00:05:00"]) do={
- /tool e-mail send to=support@vkutkxp.com.ua subject="MikroTik::Traffic $ifName" body="Download=$($Rx->"int").$($Rx->"dec") $unit\tUpload=$($Tx->"int").$($Tx->"dec") $unit";
-/file set $fStat contents="0,0,0,0";
+	:local units {"1GB"=1024*1024*1024;"2MB"=1024*1024;"3KB"=1024;"4B"=1};
+	:local unit "4B";
+	:local minRxTx ($rxtx->0);
+	:if ($minRxTx > $rxtx->1) do={:set $minRxTx ($rxtx->1);}
+	#get unit by minRxTx
+	:do {
+		:foreach u,b in=$units do={
+			:if ($minRxTx > $b) do={
+				:set $unit $u; :break;
+			}
+		}
+	} on-error={:put "break";};
+	:local uPrn [:pick $unit 1 3];
+	/tool e-mail send to=support@vkutkxp.com.ua subject="MikroTik::Traffic $ifName" body="Download=$($rxtx->0 / $units->$unit) $uPrn\tUpload=$($rxtx->1 / $units->$unit) $uPrn";
+	/file set $fStat contents="0,0";
 }
